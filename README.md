@@ -88,4 +88,4 @@ An automated email sending system built with Python and Microsoft Graph API. Thi
 
 ## License
 
-[Your chosen license] 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
