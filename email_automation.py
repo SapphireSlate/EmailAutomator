@@ -18,9 +18,20 @@ class EmailConfig:
     """Configuration settings for email automation."""
     template_path: str
     email_subject: str
-    max_retries: int = 3
-    batch_size: int = 50
-    rate_limit: int = 100  # emails per minute
+    sender_info: Dict[str, str]
+    email_settings: Dict[str, int]
+
+    @property
+    def max_retries(self) -> int:
+        return self.email_settings.get('max_retries', 3)
+    
+    @property
+    def batch_size(self) -> int:
+        return self.email_settings.get('batch_size', 50)
+    
+    @property
+    def rate_limit(self) -> int:
+        return self.email_settings.get('rate_limit', 100)
 
 class EmailTemplate:
     """Handles email template loading and personalization."""
@@ -43,7 +54,10 @@ class EmailTemplate:
         self._load_template()  # Reload if template has changed
         if not self.template:
             raise ValueError("Template not loaded")
-        return self.template.substitute(data)
+        
+        # Convert all values to strings to avoid type issues
+        safe_data = {k: str(v) if v is not None else '' for k, v in data.items()}
+        return self.template.safe_substitute(safe_data)
 
 class EmailCampaign:
     def __init__(self, config_path: str):
@@ -77,23 +91,34 @@ class EmailCampaign:
 
     async def process_contacts(self, contacts_file: str) -> Dict[str, int]:
         """Process contacts from Excel/CSV file and send emails."""
-        results = {'total': 0, 'successful': 0, 'failed': 0}
+        results = {'total': 0, 'successful': 0, 'failed': 0, 'skipped': 0}
         
         try:
+            # Read the contacts file
             df = pd.read_excel(contacts_file) if contacts_file.endswith(('.xlsx', '.xls')) \
                 else pd.read_csv(contacts_file)
             
-            for batch_start in range(0, len(df), self.config.batch_size):
-                batch = df.iloc[batch_start:batch_start + self.config.batch_size]
+            # Only process contacts with pending status
+            pending_contacts = df[df['status'].str.lower() == 'pending'].copy()
+            results['skipped'] = len(df) - len(pending_contacts)
+            
+            for batch_start in range(0, len(pending_contacts), self.config.batch_size):
+                batch = pending_contacts.iloc[batch_start:batch_start + self.config.batch_size]
                 
-                for _, row in batch.iterrows():
+                for idx, row in batch.iterrows():
                     try:
                         # Validate email
                         validate_email(row['email'])
                         
+                        # Combine contact data with sender info
+                        template_data = {**row.to_dict(), **self.config.sender_info}
+                        
                         # Personalize content
-                        content = self.template.personalize(row.to_dict())
-                        subject = self.config.email_subject.format(**row.to_dict())
+                        content = self.template.personalize(template_data)
+                        subject = self.config.email_subject.format(**template_data)
+                        
+                        # Log the content for debugging
+                        self.logger.info(f"Prepared email content for {row['email']}:\n{content}")
                         
                         # Send email
                         is_sent = self.email_sender.send_email(
@@ -106,13 +131,26 @@ class EmailCampaign:
                         results['total'] += 1
                         if is_sent:
                             results['successful'] += 1
+                            self.logger.info(f"Successfully sent email to {row['email']}")
+                            # Update status in the dataframe
+                            df.loc[idx, 'status'] = 'sent'
+                            df.loc[idx, 'email_sent_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         else:
                             results['failed'] += 1
+                            self.logger.error(f"Failed to send email to {row['email']}")
+                            df.loc[idx, 'status'] = 'failed'
                             
                     except (EmailNotValidError, KeyError, Exception) as e:
                         self.logger.error(f"Error processing {row.get('email', 'unknown')}: {str(e)}")
                         results['failed'] += 1
                         results['total'] += 1
+                        df.loc[idx, 'status'] = 'failed'
+                
+                # Save the updated status after each batch
+                if contacts_file.endswith(('.xlsx', '.xls')):
+                    df.to_excel(contacts_file, index=False)
+                else:
+                    df.to_csv(contacts_file, index=False)
                 
                 # Rate limiting
                 await asyncio.sleep(60 / self.config.rate_limit * len(batch))
@@ -132,6 +170,7 @@ async def main():
     print(f"Total emails attempted: {results['total']}")
     print(f"Successfully sent: {results['successful']}")
     print(f"Failed: {results['failed']}")
+    print(f"Skipped (already sent): {results['skipped']}")
 
 if __name__ == "__main__":
     asyncio.run(main()) 

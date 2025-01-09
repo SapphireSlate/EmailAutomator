@@ -2,21 +2,28 @@ import pandas as pd
 
 # Create sample data
 data = {
-    'email': ['rciii95@gmail.com'],
-    'first_name': ['RC'],
-    'last_name': ['Test'],
-    'company_name': ['Sweet Places'],
+    'email': ['your.email@example.com'],  # Replace with actual email
+    'first_name': ['Your'],
+    'last_name': ['Name'],
+    'job_title': ['Your Title'],
+    'company': ['Your Company'],
     'custom_message': [
-        'This is a test email from The Sweet Places automated system.'
+        'Your custom message here.'
     ],
-    'sender_name': ['The Sweet Places Team'],
-    'sender_title': ['Customer Service']
+    'email_sent_date': [''],
+    'status': ['pending']
 }
 
-# Create DataFrame
+# Create DataFrame with string dtypes
 df = pd.DataFrame(data)
 
-# Save to Excel file with the proper engine
-df.to_excel('contacts.xlsx', index=False, engine='openpyxl')
+# Ensure status column is string type
+df['status'] = df['status'].astype(str)
 
-print("contacts.xlsx file has been created successfully!") 
+# Save to Excel with string types preserved
+with pd.ExcelWriter('contacts.xlsx', engine='openpyxl') as writer:
+    df.to_excel(writer, index=False)
+
+print("contacts.xlsx file has been created successfully!")
+print("\nCurrent contacts in file:")
+print(df.to_string()) 
