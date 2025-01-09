@@ -4,7 +4,6 @@
 
 # Configuration files
 config.json
-.cursorrules
 
 # Python
 __pycache__/
