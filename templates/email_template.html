@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,15 +23,35 @@
             border-top: 1px solid #eeeeee;
             color: #666666;
         }
+        .media-content {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .media-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <p>Dear ${first_name} ${last_name},</p>
         
-        <p>I noticed you're working as a ${job_title} at ${company}.</p>
-        
         <p>${custom_message}</p>
+        
+        <div class="media-grid">
+            ${media_content}
+        </div>
         
         <p>Best regards,</p>
         <div class="signature">

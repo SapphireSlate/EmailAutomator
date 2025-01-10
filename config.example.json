@@ -1,0 +1,14 @@
+{
+    "template_path": "templates/email_template.html",
+    "email_subject": "Hello ${first_name}!",
+    "sender_info": {
+        "sender_name": "Your Name",
+        "sender_title": "Your Title",
+        "company_name": "Your Company"
+    },
+    "email_settings": {
+        "max_retries": 3,
+        "batch_size": 50,
+        "rate_limit": 100
+    }
+} 

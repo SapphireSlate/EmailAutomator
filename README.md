@@ -1,18 +1,29 @@
 # Email Automator
 
-An automated email sending system built with Python and Microsoft Graph API. This application allows for automated email campaigns with customizable templates and contact management.
+An automated email sending system built with Python and Microsoft Graph API. This application allows for automated email campaigns with customizable templates, embedded images, attachments, and contact management.
+
+## Features
+
+- HTML email template support with embedded images
+- Support for file attachments
+- Contact management with Excel/CSV files
+- Batch processing with rate limiting
+- Detailed logging
+- Customizable sender information
+- Template variable substitution
 
 ## Prerequisites
 
 - Python 3.8 or higher
+- Microsoft 365 account
 - Azure Account with registered application
-- Microsoft 365 account with appropriate permissions
+- Required Python packages (see requirements.txt)
 
-## Setup
+## Setup Instructions
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone <repository-url>
    cd EmailAutomator
    ```
 
@@ -22,61 +33,104 @@ An automated email sending system built with Python and Microsoft Graph API. Thi
    ```
 
 3. **Configure Azure Application**
-   - Register a new application in Azure Portal
-   - Add Microsoft Graph API permissions for Mail.Send
-   - Grant admin consent for the required permissions
-   - Note down the following values:
-     - Client ID
-     - Client Secret
-     - Tenant ID
+   1. Go to [Azure Portal](https://portal.azure.com)
+   2. Register a new application
+   3. Add Microsoft Graph API permissions:
+      - Mail.Send
+      - Mail.ReadWrite
+   4. Grant admin consent for the permissions
+   5. Create a new client secret
+   6. Note down:
+      - Client ID
+      - Client Secret
+      - Tenant ID
 
-4. **Environment Setup**
-   Create a `.env` file in the root directory with the following structure:
-   ```
-   CLIENT_ID=your_client_id
-   CLIENT_SECRET=your_client_secret
-   TENANT_ID=your_tenant_id
-   USER_EMAIL=your_email@domain.com
+4. **Set up configuration files**
+   1. Copy example files and rename:
+      ```bash
+      cp .env.example .env
+      cp config.example.json config.json
+      ```
+   2. Edit `.env` with your Azure credentials:
+      ```
+      CLIENT_ID=your_client_id
+      CLIENT_SECRET=your_client_secret
+      TENANT_ID=your_tenant_id
+      USER_EMAIL=your_email@domain.com
+      ```
+   3. Edit `config.json` with your sender information:
+      ```json
+      {
+          "sender_info": {
+              "sender_name": "Your Name",
+              "sender_title": "Your Title",
+              "company_name": "Your Company"
+          }
+      }
+      ```
+
+5. **Create required directories**
+   ```bash
+   mkdir -p media/embeds media/attachments logs
    ```
 
 ## Usage
 
-1. **Contact Management**
-   - Update contacts in `create_contacts.py`
-   - Run contact creation:
-     ```bash
-     python create_contacts.py
-     ```
+1. **Prepare your media files**
+   - Place embedded images in `media/embeds/`
+   - Place attachments in `media/attachments/`
 
-2. **Email Templates**
-   - Customize email templates in `templates/email_template.html`
-   - Update template variables in the code as needed
+2. **Create contacts file**
+   Run the contact creation script:
+   ```bash
+   python create_contacts.py
+   ```
+   This will create a `contacts.xlsx` file with example data. Edit this file with your actual contacts.
 
-3. **Running the Application**
+   Required columns:
+   - email: Recipient email address
+   - first_name: Recipient's first name
+   - last_name: Recipient's last name
+   - custom_message: Personalized message for the recipient
+   - embedded_media: Semicolon-separated list of embedded image paths (optional)
+   - attachments: Semicolon-separated list of attachment paths (optional)
+   - status: Email status (pending/sent/failed)
+   - email_sent_date: Date when email was sent
+
+3. **Run the email campaign**
    ```bash
    python email_automation.py
    ```
 
-## Features
+## Email Template Customization
 
-- Automated email sending using Microsoft Graph API
-- HTML email template support
-- Contact management system
-- Error handling and logging
-- Campaign tracking
-
-## Security Notes
-
-- Never commit `.env` file or any sensitive credentials
-- Use environment variables for all sensitive information
-- Regularly rotate your Azure application secrets
+The HTML email template (`templates/email_template.html`) supports the following variables:
+- ${first_name}: Recipient's first name
+- ${last_name}: Recipient's last name
+- ${custom_message}: Custom message for the recipient
+- ${media_content}: Embedded images (automatically handled)
+- ${sender_name}: Sender's name
+- ${sender_title}: Sender's title
+- ${company_name}: Company name
 
 ## Troubleshooting
 
-- Check Azure portal for correct permissions
-- Verify all environment variables are set correctly
-- Review logs for detailed error messages
-- Ensure admin consent is granted for all required permissions
+1. **Check logs**
+   - Look in the `logs` directory for detailed error messages
+   - Each run creates a new log file with timestamp
+
+2. **Common issues**
+   - Azure permissions not granted
+   - Invalid credentials in .env
+   - Missing or incorrect file paths
+   - Rate limiting (adjust in config.json)
+
+## Security Notes
+
+- Never commit `.env` file or any files containing credentials
+- Regularly rotate your Azure application secrets
+- Keep your `config.json` and `contacts.xlsx` private
+- Use environment variables for all sensitive information
 
 ## Contributing
 
@@ -84,7 +138,7 @@ An automated email sending system built with Python and Microsoft Graph API. Thi
 2. Create your feature branch
 3. Commit your changes
 4. Push to the branch
-5. Create a new Pull Request
+5. Create a Pull Request
 
 ## License
 

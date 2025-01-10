@@ -2,8 +2,16 @@
 .env
 *.env
 
-# Configuration files
+# User-specific files
 config.json
+contacts.xlsx
+contacts.csv
+
+# Media files (user should create these directories)
+media/embeds/*
+media/attachments/*
+!media/embeds/.gitkeep
+!media/attachments/.gitkeep
 
 # Python
 __pycache__/
@@ -27,13 +35,30 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+venv/
+.venv/
+
+# Logs
+logs/
+*.log
 
 # IDE specific files
 .idea/
 .vscode/
 *.swp
 *.swo
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+.cursorrules
 
-# Operating System
+# OS specific files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db 

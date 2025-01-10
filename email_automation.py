@@ -12,6 +12,7 @@ from string import Template
 import os
 from dotenv import load_dotenv
 from emailsender import EmailSender
+import glob
 
 @dataclass
 class EmailConfig:
@@ -98,6 +99,11 @@ class EmailCampaign:
             df = pd.read_excel(contacts_file) if contacts_file.endswith(('.xlsx', '.xls')) \
                 else pd.read_csv(contacts_file)
             
+            # Debug: Print all columns and a sample row
+            self.logger.info(f"Columns in contacts file: {df.columns.tolist()}")
+            if not df.empty:
+                self.logger.info(f"Sample row data: {df.iloc[0].to_dict()}")
+            
             # Only process contacts with pending status
             pending_contacts = df[df['status'].str.lower() == 'pending'].copy()
             results['skipped'] = len(df) - len(pending_contacts)
@@ -110,21 +116,97 @@ class EmailCampaign:
                         # Validate email
                         validate_email(row['email'])
                         
-                        # Combine contact data with sender info
-                        template_data = {**row.to_dict(), **self.config.sender_info}
+                        # Debug: Print row data
+                        self.logger.info(f"Processing contact: {row['email']}")
+                        self.logger.info(f"Row data: {row.to_dict()}")
+                        
+                        # Handle embedded media and attachments
+                        media_files = []
+                        attachment_files = []
+                        media_html = ""
+
+                        # Process embedded media
+                        if 'embedded_media' in row and pd.notna(row['embedded_media']):
+                            media_paths = str(row['embedded_media']).strip().split(';')
+                            self.logger.info(f"Found embedded_media value: '{row['embedded_media']}'")
+                            self.logger.info(f"Split into paths: {media_paths}")
+                            
+                            for path in media_paths:
+                                path = path.strip()
+                                if path:
+                                    self.logger.info(f"Processing media path: '{path}'")
+                                    if os.path.exists(path):
+                                        self.logger.info(f"Media file exists: {path}")
+                                        media_files.append(path)
+                                        filename = os.path.basename(path)
+                                        media_html += f'''
+                                        <div class="media-content">
+                                            <img src="cid:{filename}" alt="Product Image" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        </div>'''
+                                    else:
+                                        self.logger.warning(f"Media file not found: {path}")
+
+                        # Process attachments
+                        if 'attachments' in row and pd.notna(row['attachments']):
+                            attachment_paths = str(row['attachments']).strip().split(';')
+                            self.logger.info(f"Found attachments value: '{row['attachments']}'")
+                            self.logger.info(f"Split into paths: {attachment_paths}")
+                            
+                            for path in attachment_paths:
+                                path = path.strip()
+                                if path:
+                                    self.logger.info(f"Processing attachment path: '{path}'")
+                                    if os.path.exists(path):
+                                        self.logger.info(f"Attachment file exists: {path}")
+                                        attachment_files.append(path)
+                                    else:
+                                        self.logger.warning(f"Attachment file not found: {path}")
+
+                        # For test emails (when email matches sender), add example media and attachments if none specified
+                        if row['email'].lower() == self.email_sender.user_email.lower():
+                            if not media_files:
+                                example_media = glob.glob('media/embeds/*.*')
+                                if example_media:
+                                    media_files.extend(example_media[:1])  # Add first media file
+                                    filename = os.path.basename(example_media[0])
+                                    media_html += f'''
+                                    <div class="media-content">
+                                        <img src="cid:{filename}" alt="Example Image" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    </div>'''
+                                    self.logger.info(f"Added example media for test email: {example_media[0]}")
+                            
+                            if not attachment_files:
+                                example_attachments = glob.glob('media/attachments/*.*')
+                                if example_attachments:
+                                    attachment_files.extend(example_attachments[:1])  # Add first attachment
+                                    self.logger.info(f"Added example attachment for test email: {example_attachments[0]}")
+                        
+                        self.logger.info(f"Final media files to be embedded: {media_files}")
+                        self.logger.info(f"Final files to be attached: {attachment_files}")
+                        self.logger.info(f"Final HTML for media: {media_html}")
+                        
+                        # Prepare template data
+                        template_data = {
+                            'first_name': str(row['first_name']),
+                            'last_name': str(row['last_name']),
+                            'custom_message': str(row['custom_message']),
+                            'media_content': media_html,
+                            'sender_name': self.config.sender_info['sender_name'],
+                            'sender_title': self.config.sender_info['sender_title'],
+                            'company_name': self.config.sender_info['company_name']
+                        }
                         
                         # Personalize content
                         content = self.template.personalize(template_data)
-                        subject = self.config.email_subject.format(**template_data)
+                        subject = Template(self.config.email_subject).safe_substitute(template_data)
                         
-                        # Log the content for debugging
-                        self.logger.info(f"Prepared email content for {row['email']}:\n{content}")
-                        
-                        # Send email
+                        # Send email with both embedded media and attachments
                         is_sent = self.email_sender.send_email(
                             [row['email']],
                             subject,
                             content,
+                            embedded_media=media_files,
+                            attachments=attachment_files,
                             is_html=True
                         )
                         

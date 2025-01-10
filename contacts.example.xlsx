@@ -1,0 +1,3 @@
+email,first_name,last_name,job_title,company,custom_message,embedded_media,attachments,email_sent_date,status
+recipient@example.com,John,Doe,Manager,Example Corp,Welcome to our newsletter!,media/embeds/example.jpg,media/attachments/brochure.pdf,,pending
+another@example.com,Jane,Smith,Director,Demo Inc,Check out our latest products!,,,pending 
